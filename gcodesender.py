@@ -6,6 +6,7 @@ Simple g-code streaming script
 import serial
 import time
 import argparse
+import sys
 
 parser = argparse.ArgumentParser(description='This is a basic gcode sender. http://crcibernetica.com')
 parser.add_argument('-p','--port',help='Input USB port',required=True)
@@ -40,14 +41,30 @@ s.flushInput()  # Flush startup text in serial input
 print 'Sending gcode'
  
 # Stream g-code
-for line in f:
-	l = removeComment(line)
-	l = l.strip() # Strip all EOL characters for streaming
-	if  (l.isspace()==False and len(l)>0) :
-		print 'Sending: ' + l
-		s.write(l + '\n') # Send g-code block
-		grbl_out = s.readline() # Wait for response with carriage return
-		print ' : ' + grbl_out.strip()
+try:
+	for line in f:
+		l = removeComment(line)
+		l = l.strip() # Strip all EOL characters for streaming
+		if  (l.isspace()==False and len(l)>0) :
+			print 'Sending: ' + l
+			s.write(l + '\n') # Send g-code block
+			grbl_out = s.readline() # Wait for response with carriage return
+			print ' : ' + grbl_out.strip()
+except KeyboardInterrupt:
+	s.write('G28\n') # Return to home
+	s.write('M107\n') # Turn off the fan
+	s.write('G91\n')
+	s.write('T0\n')
+	s.write('G1 E-1\n')
+	s.write('M104 T0 S0\n') # Set temperature
+	s.write('G90\n')
+	s.write('G92 E0\n')
+	s.write('M84\n') # Turn off stepper motors
+	f.close()
+	s.close()
+	sys.exit()
+
+
  
 # Wait here until printing is finished to close serial port and file.
 raw_input("  Press <Enter> to exit.")
